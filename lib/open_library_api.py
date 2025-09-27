@@ -4,45 +4,56 @@ import json
 
 class Search:
 
-    def get_search_results(self):
-        search_term = "the lord of the rings"
-
+    def _build_url(self, search_term):
         search_term_formatted = search_term.replace(" ", "+")
         fields = ["title", "author_name"]
-        # formats the list into a comma separated string
-        # output: "title,author_name"
         fields_formatted = ",".join(fields)
         limit = 1
+        return f"https://openlibrary.org/search.json?title={search_term_formatted}&fields={fields_formatted}&limit={limit}"
 
-        URL = f"https://openlibrary.org/search.json?title={search_term_formatted}&fields={fields_formatted}&limit={limit}"
-
-        response = requests.get(URL)
-        return response.content
+    def get_search_results(self):
+        search_term = "the lord of the rings"
+        URL = self._build_url(search_term)
+        
+        try:
+            response = requests.get(URL)
+            response.raise_for_status()
+            return response.content
+        except requests.RequestException as e:
+            return f"Error fetching data: {e}".encode()
 
     def get_search_results_json(self):
         search_term = "the lord of the rings"
-
-        search_term_formatted = search_term.replace(" ", "+")
-        fields = ["title", "author_name"]
-        fields_formatted = ",".join(fields)
-        limit = 1
-
-        URL = f"https://openlibrary.org/search.json?title={search_term_formatted}&fields={fields_formatted}&limit={limit}"
+        URL = self._build_url(search_term)
         print(URL)
-        response = requests.get(URL)
-        return response.json()
+        
+        try:
+            response = requests.get(URL)
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as e:
+            return {"error": f"Error fetching data: {e}"}
 
     def get_user_search_results(self, search_term):
-        search_term_formatted = search_term.replace(" ", "+")
-        fields = ["title", "author_name"]
-        fields_formatted = ",".join(fields)
-        limit = 1
-
-        URL = f"https://openlibrary.org/search.json?title={search_term_formatted}&fields={fields_formatted}&limit={limit}"
-
-        response = requests.get(URL).json()
-        response_formatted = f"Title: {response['docs'][0]['title']}\nAuthor: {response['docs'][0]['author_name'][0]}"
-        return response_formatted
+        URL = self._build_url(search_term)
+        
+        try:
+            response = requests.get(URL)
+            response.raise_for_status()
+            data = response.json()
+            
+            if not data.get('docs') or len(data['docs']) == 0:
+                return "No results found for the given search term."
+            
+            doc = data['docs'][0]
+            title = doc.get('title', 'Unknown Title')
+            author = doc.get('author_name', ['Unknown Author'])[0] if doc.get('author_name') else 'Unknown Author'
+            
+            return f"Title: {title}\nAuthor: {author}"
+        except requests.RequestException as e:
+            return f"Error fetching data: {e}"
+        except (KeyError, IndexError) as e:
+            return f"Error parsing response: {e}"
 
 
 # results = Search().get_search_results()
